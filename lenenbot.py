@@ -5,65 +5,75 @@ import random
 
 from twython import Twython
 
-# your twitter consumer and access information goes here
-# note: these are garbage strings and won't work
-CONSUMER_KEY = 'roasdkoqwkk8i10kwks09aka'
-CONSUMER_SECRET = '4ghmkjal810kdla0wkkoasi'
-ACCESS_TOKEN = '1239821-dakos81koamow9918ma0sadsqq'
-ACCESS_SECRET = 'saklasooqjdoajfj8f9981mska01mdka09'
+import random
 
-# create your Twython object
-api = Twython(CONSUMER_KEY,CONSUMER_SECRET,ACCESS_TOKEN,ACCESS_SECRET) 
+import tweeter as Tweeter
 
-# array of 1st half John Lennon quotes
-f = open( "lennon_start.txt", "r" )
-johnstart = []
-for line in f:
-    johnstart.append( line.rstrip('\n') )
-f.close()
-
-# array of 2nd half John Lennon quotes                               
-f = open( "lennon_end.txt", "r" )
-johnend = []
-for line in f:
-    johnend.append( line.rstrip('\n') )
-f.close()
-
-# array of 1st half Vlad Lenin quotes                               
-f = open( "lenin_start.txt", "r" )
-vladstart = []
-for line in f:
-    vladstart.append( line.rstrip('\n') )
-f.close()
-
-# array of 1st half Vlad Lenin quotes                               
-f = open( "lenin_end.txt", "r" )
-vladend = []
-for line in f:
-    vladend.append( line.rstrip('\n') )
-f.close()
-
-# create new tweet
-if random.randint(1, 2) == 1:
-	# John Lennon start, Vlad Lenin end
-	nexttweet = johnstart[random.randint(0,len(johnstart)-1)].rstrip()
-	nexttweet += " "
-	nexttweet += vladend[random.randint(0,len(vladend)-1)]
-else:
-	# Vlad Lenin start, John Lenin end
-	nexttweet = vladstart[random.randint(0,len(vladstart)-1)].rstrip()
-	nexttweet += " "
-	nexttweet += johnend[random.randint(0,len(johnend)-1)]
-
-# transmit it via Twitter
-api.update_status(status=nexttweet)
+# main entry, gets called by cron, chooses a 1/125 possbility for Tweeting
+# this is based on cron starting at 6am (PST) - 9pm (PST), 15 hours total
+# every 9 minutes is about 1 out of every 100 for an average of 1 tweet/day
+def Activate():
+	randChance = 1.0/100.0
 	
-# save all transmitted tweets, just for sake of recording
-f = open("senttweets.txt", "a")
-f.write(nexttweet)
-f.write("\n")
-f.close()
+	randomNum = random.random()
 
-# will end up getting saved to screen
-print nexttweet
+	# this outputs to cronlog, so we can tell if script is working, use randomNum to switch up output
+	outStr = "Activate (lenenbot.py)\n"
+	outStr = outStr + "randomNum = " + str(randomNum) + "\n"
+	outStr = outStr + "randomChance " + str(randChance) + "\n"
 
+	# if we are in random range, choose a random quotebot and tweet it
+	if randChance >= randomNum:
+		tweetedMsg = tweetComboQuote()
+		outStr = outStr + "TWEETING\n"
+		outStr = outStr + tweetedMsg
+	else:
+		outStr = outStr + "NO TWEET SENT"
+
+	print outStr
+
+def tweetComboQuote():
+	tweetStr = generateTweet()
+	Tweeter.tweetMessage(Tweeter.getKeys("keys.txt"), tweetStr)
+	saveTweet(tweetStr)
+	return tweetStr
+
+def generateTweet():
+	# arrays of half sections of each quote
+	johnstart = getFileLines("lennon_start.txt")
+	johnend = getFileLines("lennon_end.txt")
+	vladstart = getFileLines("lenin_start.txt")
+	vladend = getFileLines("lenin_end.txt")
+
+	# create new tweet
+	if random.randint(1, 2) == 1:
+        	# John Lennon start, Vlad Lenin end
+        	tweet = johnstart[random.randint(0,len(johnstart)-1)].rstrip()
+        	tweet += " "
+        	tweet += vladend[random.randint(0,len(vladend)-1)]
+	else:
+        	# Vlad Lenin start, John Lenin end
+        	tweet = vladstart[random.randint(0,len(vladstart)-1)].rstrip()
+        	tweet += " "
+        	tweet += johnend[random.randint(0,len(johnend)-1)]
+
+	return tweet
+
+# makes an array from lines in a file, stripping off the newlines
+def getFileLines(filename):
+	f = open( filename, "r" )
+	arr = []
+	for line in f:
+    		arr.append( line.rstrip('\n') )
+	f.close()
+	return arr
+
+def saveTweet(tweet):	
+	# save all transmitted tweets, just for sake of recording
+	f = open("senttweets.txt", "a")
+	f.write(tweet)
+	f.write("\n")
+	f.close()
+
+if __name__ == "__main__":
+	Activate()
